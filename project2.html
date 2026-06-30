@@ -1,0 +1,285 @@
+<!DOCTYPE HTML>
+<!--
+	Massively by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>DataBridge: MySQL to AWS | My Phan</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+        <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css" rel="stylesheet" />
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header">
+					
+					</header>
+
+
+
+
+
+				<!-- Nav -->
+					<nav id="nav">
+						<ul class="links">
+							<li><a href="index.html">Home</a></li>
+							<li class="active"><a href="ongoingprojects.html">Articles</a></li>
+							<li><a href="contact.html">Contact</a></li>
+						</ul>
+						<ul class="icons">
+							<li><a href="#" class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
+							<li><a href="#" class="icon brands fa-github"><span class="label">GitHub</span></a></li>
+						</ul>
+					</nav>
+
+
+
+
+
+				<!-- Main -->
+					<div id="main">
+
+						<!-- Post -->
+							<section class="post">
+								<header class="major">
+									<span class="date">April 26, 2026</span>
+									<h1>DataBridge: MySQL to AWS</h1>
+									<p>Design and implement an end-to-end data pipeline that ingests raw CSV data 
+                                        into a local MySQL database using Docker, performs data cleaning and transformation, 
+                                        and securely migrates the processed data to a cloud-based AWS RDS instance. 
+                                        The project demonstrates practices in database management, backup generation, 
+                                        cloud deployment, and production-level data validation.</p>
+								</header>
+								<div class="image main"><img src="images/AWS-1/16.png" alt="Thumbnail"/></div>
+                                
+                         
+                                <section class="overview">
+                                <h2>Overview OF WORKFLOW</h2>
+                                <div class="card-container">
+
+                                    <div class="card">
+                                    <h3>🐳 Local Environment</h3>
+                                    <p>Run MySQL locally using Docker in an isolated setup.</p>
+                                    </div>
+
+                                    <div class="card">
+                                    <h3>📥 Data Ingestion</h3>
+                                    <p>Import CSV data into MySQL and perform cleaning.</p>
+                                    </div>
+
+                                    <div class="card">
+                                    <h3>💾 Backup</h3>
+                                    <p>Generate SQL dumps for backup and migration.</p>
+                                    </div>
+
+                                    <div class="card">
+                                    <h3>☁️ Cloud Deployment</h3>
+                                    <p>Deploy a scalable database using AWS RDS.</p>
+                                    </div>
+
+                                    <div class="card">
+                                    <h3>🔄 Migration</h3>
+                                    <p>Transfer data from local MySQL to the cloud.</p>
+                                    </div>
+
+                                    <div class="card">
+                                    <h3>✅ Insert and Verify</h3>
+                                    <p>Insert and verify data in a production-like environment.</p>
+                                    </div>
+
+                                </div>
+                                </section>
+
+								<div>
+									<span class="section">Section A:</span>
+                                    <p class="section">🐳 Run MYSQL using Docker</p>
+									<p>This function below calculates the estimated longevity of materials based on their thickness loss over time. 
+                                    It processes the dataset by first determining the material loss per year, then estimating how many years
+                                     remain before the material reaches full degradation based on its current thickness. This simplified approach does 
+                                     not take into account other factors such as pipe size, temperature, or operating conditions</p>
+										<pre><code class="language-sql">docker run --name mysql-container \
+-e MYSQL_ROOT_PASSWORD=thepasswordthatyousetup \
+-p 3306:3306 \
+-d mysql
+</code></pre>
+								<div><figure class="data-figure">
+                                <div class="" >
+								<img src="images/AWS-1/1.png" width = "800" style="display:block; margin:40px auto; alt="Docker MySQL setup" />
+                                </div>
+								</figure></div>
+							    </div>
+                                
+                                <p>Verify the container is running on Docker</p>
+                                <img src="images/AWS-1/2.png" width = "1300" style="display:block; margin:40px auto; alt="Docker MySQL setup" />
+
+
+                               	<div><figure class="data-figure">
+                                <div class="container" >
+                                <img src="images/AWS-1/17.png" alt="Imported dataset screenshot" width = "1200" />
+                                </div>
+								</figure></div>
+
+                                <figcaption>
+                                    A screenshot of the imported data. Full data is available
+                                    <a href="https://docs.google.com/spreadsheets/d/1ykg6kvXECC9pNzPkLIk58fafawXP-CcuRnGV_NoyDcY/edit?usp=sharing">
+                                        here
+                                    </a>.
+                                </figcaption>
+                                
+
+								<div>
+                                <p>Once the MySQL database (mydb) is set up inside the Docker container, the next step in the pipeline 
+                                is to define a table that matches the structure of the raw dataset.
+                                Since the goal is to preserve the original data without transformation at this stage, all fields are stored as VARCHAR(300).
+                                This ensures flexibility during ingestion and avoids data loss due to strict typing.</p></div>  
+                                <div>
+                                <pre><code class="language-js">
+    CREATE TABLE users (
+    `date` VARCHAR(300), 
+    brent_usd_barrel VARCHAR(300),
+    wti_usd_barrel VARCHAR(300),
+    dubai_usd_barrel VARCHAR(300),
+    us_gas_avg_gallon VARCHAR(300),
+    us_diesel_avg_gallon VARCHAR(300),
+    strait_hormuz_daily_ships VARCHAR(300),
+    iran_production_mbpd VARCHAR(300),
+    key_event VARCHAR(300),
+    war_day VARCHAR(300),
+    brent_vs_prewar_pct VARCHAR(300),
+    gas_vs_prewar_pct VARCHAR(300),
+    gas_change_from_prewar_dollars VARCHAR(300),
+    phase VARCHAR(300),
+    source VARCHAR(300),
+    data_as_of VARCHAR(300)
+
+);
+</code></pre></div> 
+                            <div>
+									
+                                <p class="section">📥 Data Ingestion</p>
+                                <p> Before run this cmd, make sure your terminal (bash) is currently inside the folder
+                                     where your file is located. First, we need to load the dataset to Docker. Copy the file
+                                      into a running Docker container because container is an isolated environment.</p>
+
+                                
+                                
+                                <image src="images/AWS-1/3.png" width = "800" style="display:block; margin:40px auto; alt="Copy Data to Docker" />
+
+                                <p>After creating the users table, the next step is to import the raw CSV dataset into MySQL.
+                                Since a .csv file is a plain text format, MySQL needs explicit instructions to understand how the data is structured.
+                                 We define the delimiters for columns and rows so that the database can correctly map each value into the corresponding table fields.
+                                Additionally, we skip the header row to prevent column names from being inserted as data.</p>
+                                <pre><code class="language-sql">LOAD DATA LOCAL INFILE '/iran_war_oil_prices_daily_2026.csv'
+INTO TABLE users
+FIELDS TERMINATED BY ','
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;</code></pre>
+                                <pre><code class="language-sql">SELECT * FROM users;</code></pre>
+                                
+                                <div class="container" >
+                                <img src="images/AWS-1/5.png" alt="Result" width = "1200" />
+                                </div>
+								<div>
+
+
+                                <p class="section">Export Data Dump</p>    
+								<p>A database dump creates a full backup of a database, including both the schema (structure) and the data (rows). 
+                                    It preserves data types, table definitions, and relationships, and works like a snapshot of the database at a 
+                                    specific point in time.</p>
+							    <pre><code class="language-js">mysqldump -u root -p mydb > backup.sql</code></pre>
+                                <image src="images/AWS-1/6.png" width = "800" style="display:block; margin:40px auto; alt="Export Data Dump" />
+							
+                            <span class="section">Section B:</span>
+                            <p class="section">☁️ Cloud Deployment</p>
+                            <p>I created a database name mydb in AWS RDS and configured it for secure access. Set inbound rules in the security group to allow only my IP address and 
+                                outbound to 0.0.0.0/0. This ensure only my computer (on-prem) can access to the database. Next, I connected the
+                                 local MySQL client to the AWS RDS instance using: Endpoint (host) Username Database Password</p>
+                            <image src="images/AWS-1/10.png" width = "1300" style="display:block; margin:40px auto; alt="Connect to AWS RDS" />
+                             
+                            <pre><code class="language-sql">mysql -h my-rds-endpoint.amazonaws.com
+-u admin -p </code></pre>
+
+                            <image src="images/AWS-1/11.png" width = "1300" style="display:block; margin:40px auto; alt="Connect to AWS RDS" />
+							<div>
+							<p> Inside the mydb database we just created, I created another database called oil_db, and created a table named users
+                                 within it to prepare for the migration. The migration of backup.sql will be transfered to the table users in oil_db</p>
+
+                            <image src="images/AWS-1/12.png" width = "1300" style="display:block; margin:40px auto; alt="Create database and table in AWS RDS" />
+                            <p class="section">🔄 Migrations</p> 
+                            <p>To migrate the data from the local MySQL database to the AWS RDS instance, I used the SQL dump file created earlier. 
+                                The dump file contains all the necessary SQL commands to recreate the database schema and insert the data into the new environment.</p>
+                            <pre><code class="language-js">mysql -h my-rds-endpoint.amazonaws.com
+-u admin -p mydb < backup.sql</code></pre>
+                            <div class="container" >
+                            <image src="images/AWS-1/13.png" width = "1000" style="display:block; margin:40px auto; alt="Migrate data to AWS RDS" />
+                            </div>
+
+                            <p class="section"> ✅ Insert and Verify Data </p>
+							<p>New data was inserted into the source MySQL database to validate that the migration to AWS RDS was successful.</p>
+                            <pre><code class="language-sql">INSERT INTO users (date, brent_usd_barrel, wti_usd_barrel)
+VALUES ('2026-4-29', '69.0', '70.1');</code></pre>
+                            
+                            <div class="container" >
+                            <image src="images/AWS-1/15.png" width = "1000" style="display:block; margin:40px auto; alt="Insert and Verify Data" />
+                            </div>
+
+                        <span class="section">Limitation and Notes</span>
+                        <p>While working on this project, I realized there are alternative and faster ways to migrate data to AWS RDS.
+
+For example, AWS RDS can directly import .csv files in some workflows, meaning it is possible to avoid using Docker and generating a SQL dump. However, using a database dump is generally a safer and more reliable method, especially when preserving schema and data consistency.
+
+I used the AWS Free Tier for this project to handle data migration. While this approach is suitable for small datasets, performance and cost considerations become important for larger-scale data.
+
+For bigger datasets, using RDS alone may become more expensive over time, even though it provides fast query performance.
+
+A more scalable approach would be:
+                        
+                            <ul>
+                                <li>Store raw data in Amazon S3</li>
+                                <li>Use Amazon Athena for querying data directly without fully loading it into a database</li>
+                            </ul>
+                          
+
+
+This architecture is more cost-efficient for large datasets and supports scalable analytics workflows.</p>
+                            
+                            <span class="section">Next Improvements</span>
+                            <ul>
+                            <li>Store CSV in AWS S3 before loading (CSV → S3 → ETL script → RDS) </li>
+                            <li>Add Apache Airflow for pipeline automation (Runs your ETL every day/hour)</li>
+                            <li>Add Docker Compose for multi-service setup (automation)</li>
+                            </ul>
+							</div>
+							</section>
+
+					</div>
+
+
+					<!-- Copyright -->
+						<div id="copyright">
+						
+					</div>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-sql.min.js"></script>
+
+	</body>
+</html>

@@ -1,0 +1,313 @@
+<!DOCTYPE HTML>
+<!--
+	Massively by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Management: Task Tracker</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+        <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css" rel="stylesheet" />
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header">
+					
+					</header>
+
+
+
+
+
+				<!-- Nav -->
+					<nav id="nav">
+						<ul class="links">
+							<li><a href="index.html">Home</a></li>
+							<li class="active"><a href="ongoingprojects.html">Articles</a></li>
+							<li><a href="contact.html">Contact</a></li>
+						</ul>
+						<ul class="icons">
+							<li><a href="#" class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
+							<li><a href="#" class="icon brands fa-github"><span class="label">GitHub</span></a></li>
+						</ul>
+					</nav>
+
+
+
+
+
+				<!-- Main -->
+					<div id="main">
+
+						<!-- Post -->
+							<section class="post">
+								<header class="major">
+									<span class="date">June 26 2026</span>
+									<h1>Management: Task Tracker</h1>
+									<p>Task Tracker is a project designed to track and manage tasks. In this project, we focus on building a command-line interface (CLI) 
+                                        application to practice core software development concepts such as CRUD operations, data storage, and user interaction. In real-world business, 
+                                        task tracker project can develop into employee task management system or
+                                        customer support ticket system. </p>
+								</header>
+								<div class="image main"><img src="images/project3.thubmnail.webp" alt="Thumbnail"/></div>
+                                
+                         
+                                <section class="overview">
+                                <h2>Overview OF WORKFLOW</h2>
+                                <div class="card-container">
+
+                                    <div class="card">
+                                    <h3>📄 JSON function</h3>
+                                    <p>Created a JSON file and integrated it with a Python file.</p>
+                                    </div>
+
+                                    <div class="card">
+                                    <h3> 👀 CRUD operation</h3>
+                                    <p>Implemented Create, Read, Update, and Delete (CRUD) functionality for managing tasks.</p>
+                                    </div>
+
+                                    <div class="card">
+                                    <h3>💻 Argparse</h3>
+                                    <p>Use argparse to provice direction for users</p>
+                                    </div>
+
+                                </div>
+                                </section>
+
+								<div>
+									
+                                    <p class="section">📄 JSON function</p>
+									<p>We use json.dump() and json.load() from Python's json module to convert data between Python objects and JSON files.
+                                        json.dump() writes a python object to json file and json.load() reads data from json file and converts it back to python objects </p>
+                                        <p>Python</p>
+
+										<pre><code class="python">FILE_NAME = "tasks.json"
+                                            
+def load_tasks():
+with open(FILE_NAME, "r") as file:
+        return json.load(file) #Json converts the data into a python object
+
+ 
+def save_tasks(tasks):
+    with open(FILE_NAME, "w") as file:
+        json.dump(tasks, file, indent=4)
+</code></pre>
+								
+                            <div>
+									
+                                <p class="section">👀 CRUD operation</p>
+                                <p> In this section, we implement basic CRUD operations such as creating, reading, updating, and deleting tasks. In addition, 
+                                    users can update their task progress and filter tasks based on their status. We add two specific functions to handle progress 
+                                    updates and task filtering
+                                </p>
+<pre><code>def create_task(description):
+    tasks = load_tasks() #new local variable to load the tasks from the json file
+    task = {
+        "id": len(tasks) + 1,
+        "description": description,
+        "status": "to do"
+    } #task formatted as a dictionary with id, description and status
+    tasks.append(task)  #add to the tasks list
+    save_tasks(tasks)
+    print(f"Task '{description}' created successfully.") #Json load is updated with the new task and saved back to the file
+
+def update_task():
+    list_tasks()
+    task_id = input("Enter the task ID to update: ")
+    tasks = load_tasks()
+    for task in tasks:
+        if task["id"] == int(task_id):
+            new_description = input("Enter the new description: ")
+            task["description"] = new_description
+            save_tasks(tasks)
+            print(f"Task ID {task_id} updated successfully.")
+            return #exit function after updating the task
+    print(f"Task ID {task_id} not found.")
+   
+
+def delete_task():
+    list_tasks() #display the list of tasks before deleting
+    task_id = input("Enter the task ID to delete: ")
+    tasks = load_tasks()
+    for task in tasks:
+        if task["id"] == int(task_id):
+            tasks.remove(task)
+            save_tasks(tasks)
+            # tasks = reindex_tasks(tasks)
+            print(f"Task ID {task_id} deleted successfully.")
+            return #exit function after deleting the task
+    print(f"Task ID {task_id} not found.")
+
+
+def mark_status(task_id, status):
+    list_tasks()
+    tasks = load_tasks()    
+    for task in tasks:
+        if task["id"]==int(task_id): #inside vs outside data
+            task["status"] = status #update the status of the task with the given task_id
+            save_tasks(tasks)
+            print(f"Task ID {task_id} marked as {status}.")
+            return
+    print(f"Task ID {task_id} not found.")
+
+def list_tasks():
+    tasks = load_tasks()
+    if not tasks:
+        print("No tasks found.")
+        return
+    for task in tasks:
+        print(f"ID: {task['id']}, Description: {task['description']}, Status: {task['status']}")
+    return
+</code></pre>
+
+                                
+        
+                                <p>Note: for create function, after append a new task to tasks, the task is just added to python memories. We need 
+                                    to save it back to JSON file. Hence, ` save_tasks(tasks)` is neccessary. In addition, since we use the task ID 
+                                    to delete or update tasks, it is important to show users the list of tasks along with their corresponding IDs. 
+                                    This helps users identify which task and ID they want to select.
+                                </p>
+
+<pre><code>def categorize_tasks():
+    tasks = load_tasks()
+
+    if not tasks:
+        print("No tasks found.")
+        return
+
+    task_list = input("Filter by (to do, in progress, done): ")
+    if task_list not in ["to do", "in progress", "done"]:
+        print ("Invalid answer. Please enter: to do, inprogress or done")
+    found = False
+    for task in tasks:
+        if task["status"] == task_list:
+            found = True
+            print(task)
+
+    if not found: #found == false
+        print(f"no matching activities with status '{task_list}' found") 
+</code></pre>
+                                <p>For categorizing tasks, we want the function to return tasks based on the user's input. Since the JSON file stores data as a list 
+                                    of dictionaries ([] containing {}), where each dictionary has elements such as id, description, and status, we need to iterate through 
+                                    each task (dictionary) in the list (tasks). During each iteration, we check if the task's status task["status"] value matches the user's input. If it matches, 
+                                    we return/display that task.
+
+                                </p>
+                                
+                                
+<p>To improve usability, we use Python's argparse module to create a command-line interface (CLI). This allows users to interact 
+    with the program through simple commands without needing to view or understand the underlying code. Users can execute
+ actions such as creating, updating, deleting, or listing tasks directly from the terminal.</p>
+
+
+                                <p class="section">💻 Argparse</p>    
+								<p>
+                                    <a href="https://docs.python.org/3/howto/argparse.html">
+                                    Learn
+                                    </a>
+                                about argparse
+                                </p>
+							    <pre><code class="">def main():
+    parser = argparse.ArgumentParser(description="task tracker input")
+    subparsers = parser.add_subparsers(dest="command")
+
+    create = subparsers.add_parser("create", help="create a new task")
+    create.add_argument("description", help="task description") #function create have the description argument
+    
+
+    update = subparsers.add_parser("update", help="update task")
+
+    delete = subparsers.add_parser("delete", help="delete task")
+
+    mark_task = subparsers.add_parser("change", help= "mark task inprogress or complete")
+    mark_task.add_argument(
+    "task_id",
+    type=int,
+    help="task id")
+
+    mark_task.add_argument(
+    "status",
+    help="new status")
+
+
+    list_task = subparsers.add_parser("list", help="list all tasks")
+    categorize_task = subparsers.add_parser("categorize", help="filter task by status")
+    
+    args = parser.parse_args()
+    if args.command == "create":
+        create_task(args.description)
+    elif args.command == "update":
+        update_task()
+    elif args.command == "delete":
+        delete_task()
+    elif args.command == "change":
+        mark_status(args.task_id, args.status)
+    elif args.command == "list":
+        list_tasks()
+    elif args.command == "categorize":
+        categorize_task()
+    else:
+        parser.print_help()
+    
+    
+
+
+if __name__ == "__main__":
+    main()
+
+</code></pre>
+
+
+                            
+                            <span class="section">Testing</span>
+                            <p>with argparse, I created help table for users with all CLI needed. When we run this file `python tasks.py -h`, 
+                                help table are shown as below
+                            </p>
+                            <image src="images/project3.1.png" width = "1000" style="display:block; margin:40px auto; alt="output" />
+							<p> Run command with python</p>
+                            <pre><code>python tasks.py list</code></pre>   
+                            <image src="images/project3.2.png" width = "1000" style="display:block; margin:40px auto; alt="output1" />
+
+
+
+
+                            
+                        <span class="section">Possible Upgrade</span>
+                            <ul>
+                                <li>Add task search</li>
+                                <li>Use SQLite database</li>
+                                <li>Add automated tests</li>
+                                <li>REST API</li>
+                            </ul>
+                          
+					</div>
+
+
+					<!-- Copyright -->
+						<div id="copyright">
+						
+					</div>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-sql.min.js"></script>
+
+	</body>
+</html>
