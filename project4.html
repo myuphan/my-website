@@ -1,0 +1,672 @@
+<!DOCTYPE HTML>
+<!--
+	Massively by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>DevOps: Node.js CI/CD Pipeline</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+        <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css" rel="stylesheet" />
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header">
+					
+					</header>
+
+				<!-- Nav -->
+					<nav id="nav">
+						<ul class="links">
+							<li><a href="index.html">Home</a></li>
+							<li class="active"><a href="ongoingprojects.html">Articles</a></li>
+							<li><a href="contact.html">Contact</a></li>
+						</ul>
+						<ul class="icons">
+							<li><a href="#" class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
+							<li><a href="#" class="icon brands fa-github"><span class="label">GitHub</span></a></li>
+						</ul>
+					</nav>
+
+				<!-- Main -->
+					<div id="main">
+
+						<!-- Post -->
+							<section class="post">
+								<header class="major">
+									<span class="date">September 18 2026</span>
+									<h1>DevOps: Node.js CI/CD Pipeline</h1>
+									<p>A hands-on DevOps project that provisions cloud infrastructure with Terraform, configures a server with Ansible,
+										and deploys a Node.js sign-up/login website backed by PostgreSQL. I built and tested two different deployment
+										methods end to end: a manual Ansible-driven deployment onto a fresh EC2 instance, and a fully automated
+										pipeline using GitHub Actions that redeploys on every push — even after the server's public IP changes.</p>
+								</header>
+								<div class="image main"><img src="images/CICD.jpeg" alt="Thumbnail"/></div>
+
+								<section class="overview">
+								<h2>Overview OF WORKFLOW</h2>
+								<div class="card-container">
+
+									<div class="card">
+									<h3>🏗️ Terraform</h3>
+									<p>Provisioned an AWS EC2 instance, security group, and key pair as reproducible, version-controlled code.</p>
+									</div>
+
+									<div class="card">
+									<h3>⚙️ Ansible</h3>
+									<p>Two roles — <code>postgres</code> installs and secures PostgreSQL; <code>app</code> installs Node.js and deploys the app as a systemd service.</p>
+									</div>
+
+									<div class="card">
+									<h3>🔐 Ansible Vault</h3>
+									<p>Encrypted database credentials so secrets never sit in plaintext inside the repo.</p>
+									</div>
+
+									<div class="card">
+									<h3>🔑 bcrypt auth</h3>
+									<p>Hashed passwords before storage and verified logins by comparing hashes, never plaintext.</p>
+									</div>
+
+									<div class="card">
+									<h3>🖥️ Method 1: Manual deploy</h3>
+									<p>Provisioned the server, cloned the repo onto it directly, and ran the app as a systemd service by hand.</p>
+									</div>
+
+									<div class="card">
+									<h3>🚀 Method 2: GitHub Actions</h3>
+									<p>Automated redeploys on every push — dynamically looks up the server's current IP via the AWS API, no Elastic IP required.</p>
+									</div>
+
+								</div>
+								</section>
+
+								<div>
+
+									<p class="section">🏗️ Step 1 — Provisioning with Terraform</p>
+									<p>Terraform defines the EC2 instance, its security group, and key pair as code, rather than clicking through
+										the AWS console by hand. Running <code>terraform apply</code> stands up the exact same server every time —
+										reproducible, version-controlled infrastructure.</p>
+									<p>terraform/main.tf</p>
+
+<pre><code class="">#user key generated on AWS
+provider "aws" {
+    region = "us-east-2"
+    access_key = var.aws_access_key
+    secret_key = var.aws_secret_key
+}
+
+#new key-pair
+
+resource "aws_key_pair" "developer" {
+    key_name = "node.js-key-pair"
+    public_key = file("/home/phanumy/.ssh/ansible-key.pub")
+}
+
+resource "aws_security_group" "allow_traffic" {
+    name = "allow_traffic"
+    description = "allow traffic to server"
+
+    ingress {
+        from_port = 22
+        to_port = 22
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    ingress {
+        from_port = 80
+        to_port = 80
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+
+    }
+
+    ingress {
+        from_port = 443
+        to_port = 443
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_instance" "my_server" {
+    ami           = "your-ami-id" # Replace with a valid Ubuntu AMI ID for your region
+    instance_type = "your-instance-type" # Replace with your desired instance type, e.g., "t2.micro"
+    vpc_security_group_ids = [
+        aws_security_group.allow_traffic.id
+    ]
+
+    key_name = aws_key_pair.developer.key_name
+
+    tags = {
+        Name = "My-Node.js-EC2"
+        Project = "mynode.js"
+    }
+}
+
+output"instance_public_ip" {
+    value = aws_instance.my_server.public_ip
+}
+
+</code></pre>
+
+									<p>The <code>Project = "mynode.js"</code> tag matters beyond bookkeeping — both the Ansible dynamic inventory
+										and the GitHub Actions workflow later use this exact tag to find the running instance automatically,
+										without anyone hardcoding an IP address anywhere.</p>
+
+								<p class="section">⚙️ Step 2 — Configuring the server with Ansible</p>
+								<p>Ansible finds the server through a dynamic inventory that queries AWS directly, rather than a static list
+									of IPs — since a stopped/restarted EC2 instance gets a brand-new public IP every time.</p>
+								<p>inventory/aws_ec2.yml</p>
+
+<pre><code class="">plugin: amazon.aws.aws_ec2
+regions:
+  - us-east-2
+filters:
+  instance-state-name: running
+  tag:Project: mynode.js
+hostnames:
+  - node-js
+compose:
+  ansible_host: public_ip_address
+  ansible_user: "'ubuntu'"
+  ansible_ssh_private_key_file: "'/home/phanumy/.ssh/ansible-key'"
+</code></pre>
+
+								<p>The main playbook loads an encrypted Ansible Vault for credentials, then applies two roles in order —
+									database first, application second.</p>
+								<p>Ansible/node_service.yml</p>
+
+<pre><code class="">- name: Configure server and deploy Node.js app
+  hosts: all
+  become: true
+  vars_files:
+    - group_vars/all/vault.yml
+
+  roles:
+    - role: postgres
+      tags: postgres
+    - role: app
+      tags: app
+</code></pre>
+
+								<p>The <code>postgres</code> role installs PostgreSQL, creates a dedicated application database and a
+									restricted-privilege user, switches authentication from OS-based <code>peer</code> to password-based
+									<code>md5</code>, and creates the <code>users</code> table.</p>
+								<p>Ansible/roles/postgres/tasks/main.yml</p>
+
+<pre><code class="">- #install postgres
+- name: Install acl package (required for become_user)
+  apt:
+    name: acl
+    state: present
+    update_cache: yes
+
+- name: Install PostgreSQL
+  apt:
+    name: 
+    - postgresql
+    - postgresql-contrib
+    - python3-psycopg2
+    state: present
+    update_cache: yes
+- name: Ensure PostgreSQL is running
+  service:
+    name: postgresql
+    state: started
+    enabled: yes
+
+#to enable to create the db, ubuntu user need to switch to postgres user and run the command, so we need to add ubuntu user to postgres group
+- name: create app db
+  become: true
+  become_user: postgres
+  postgresql_db:
+    name: "{{ vault_db_name }}"
+    state: present
+
+#enable node.js to log in and modify postgres
+- name: create app db user
+  become: true
+  become_user: postgres
+  postgresql_user:
+    name: "{{ vault_db_user }}"
+    password: "{{ vault_db_password }}"
+    db: "{{ vault_db_name }}"
+    priv: "ALL"
+    state: present
+  
+
+
+- name: Create user table
+  become: true
+  become_user: postgres
+  postgresql_query:
+    db: "{{ vault_db_name }}"
+    query: >
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+ #flip a default setting in pg_hba.conf to allow local password authentication for node.js     
+- name: Allow local password authentication in pg_hba.conf
+  lineinfile:
+    path: /etc/postgresql/{{ postgresql_version | default('16') }}/main/pg_hba.conf
+    regexp: '^local\s+all\s+all\s+peer'
+    line: "local   all             all                                     md5"
+    state: present
+  notify: restart postgresql
+
+
+#make sure listen on localhost since receive request from node.js app
+- name: Allow app to connect via TCP (localhost)
+  lineinfile:
+    path: /etc/postgresql/{{ postgresql_version | default('16') }}/main/postgresql.conf
+    regexp: '^#?listen_addresses'
+    line: "listen_addresses = 'localhost'"
+    state: present
+  notify: restart postgresql
+
+</code></pre>
+
+								<p>The <code>app</code> role installs Node.js, pulls the application code, installs dependencies, and
+									generates two files from Jinja2 templates: the app's environment file and its systemd unit.</p>
+								<p>roles/app/tasks/main.yml</p>
+
+<pre><code class="">- name: Add NodeSource GPG key and repo
+  shell: curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  args:
+    creates: /etc/apt/sources.list.d/nodesource.list
+
+- name: Install Node.js and npm
+  apt:
+    name: nodejs
+    state: present
+    update_cache: yes
+
+- name: Clone or update the application repository
+  git:
+    repo: "https://github.com/myuphan/Node-AWS.git"
+    dest: /home/ubuntu/node-app
+    version: master
+    force: yes
+  become: true
+
+- name: Install npm dependencies
+  npm:
+    path: /home/ubuntu/node-app
+    production: yes
+  become: true
+  become_user: ubuntu
+
+- name: Create .env file with database connection details
+  template:
+    src: env.j2
+    dest: /home/ubuntu/node-app/.env
+    owner: ubuntu
+    group: ubuntu
+    mode: "0600"
+  no_log: true
+
+- name: Create systemd service file for the Node.js app
+  template:
+    src: app.service.j2
+    dest: /etc/systemd/system/node-app.service
+    mode: "0644"
+  notify: restart node-app
+
+- name: Enable and start the Node.js app service
+  systemd:
+    name: node-app
+    state: started
+    enabled: true
+    daemon_reload: yes
+</code></pre>
+                                <p><mark>env. file</mark></p>
+								<p>Ansible/roles/app/templates/env.j2 — Variables for the application's environment. Include port configurations and DB connection details.</p>
+
+<pre><code>DB_HOST=localhost
+DB_PORT=5432<span style="background-color: #ffe23b;"># Configure port 5432 is the port that PostgreSQL listens on</span>
+DB_NAME={{ vault_db_name }}
+DB_USER={{ vault_db_user }}
+DB_PASSWORD={{ vault_db_password }}
+PORT=80  <span style="background-color: #ffe23b;"># Configure port 80 is the port the app receiving request. Port for the Node.js app. Not hardcoded in index.js file/ refer to the file</span>
+</code></pre>       
+                                <p><mark>.service file - systemd </mark></p>
+								<p>Ansible/roles/app/templates/app.service.j2 — This file is important because it generates a template for systemd file (on EC2 server /etc/systemd/system/node-app.service) keep the app running/ systemd read node-app.service file. Node-app.service file point to index.js and routes or .env </p>
+                                
+
+<pre><code>[Unit]
+Description=Node.js Ecommerce Practice App
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/node-app #instructions inside that file, telling systemd where your actual application code is, so it knows what to run.
+EnvironmentFile=/home/ubuntu/node-app/.env
+Restart=on-failure
+RestartSec=5
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+
+<p>The app connected to ansible/roles/app/tasks/main.yml where indicated the location on EC2 that systemd service file is located.  <span style="background-color: #ffeb3b;">Systemd read the instructions in the node-app.service file to keep the app running without restarting/stopping node-app code </span></p>
+
+
+<pre><code>[Unit]
+- name: Create systemd service file for the Node.js app
+  template:
+    src: app.service.j2 #the template file
+    dest: /etc/systemd/system/node-app.service #exact location on EC2 server
+    mode: "0644"
+  notify: restart node-app
+</code></pre>
+
+
+								<p><code>AmbientCapabilities=CAP_NET_BIND_SERVICE</code> is doing quiet, important work here — it lets the
+									app bind to port 80 without running the whole process as root, which would otherwise be the only way
+									for a non-privileged user to use a port below 1024.</p>
+
+								<p class="section">🔑 The application: Express + bcrypt + PostgreSQL</p>
+                                <p><mark>Node-app/db.js</mark></p>
+								<p><span style="background-color: #ffeb3b;">Node-app/db.js is a file that connects your Node.js app to the existing PostgreSQL database we created with Ansible</span></p>
+
+<pre><code class="">const { Pool } = require('pg'); //import pool from pg packages
+
+const pool = new Pool({
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 5432, //refer to env.file on EC2 or env.j2 on local machine for the database host
+  database: process.env.DB_NAME, //match vault in ansible
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+});
+
+module.exports = pool;
+
+</code></pre>
+
+                                 <p><mark>Node-app/index.js</mark></p>
+                                 <p></p>
+
+<pre><code>require('dotenv').config();  // use config method from dotenv module to load environment variables from .env file into process.env 
+const express = require('express'); //Express framework for Node.js to handle web requests and responses
+const path = require('path'); // module for pull safe path from OS
+
+const registerRoute = require('./routes/register'); //define what happen at each specific URL path 
+const loginRoute = require('./routes/login');
+
+const app = express(); // create express application object and listen on port 80 for incoming requests
+const PORT = process.env.PORT || 80; // decide port listen on
+
+app.use(express.json()); // //middleware -things run on incoming request 
+// Serve the HTML/CSS files in the "public" folder.
+// This makes index.html available at "/", login.html at "/login.html", etc.
+app.use(express.static(path.join(__dirname, 'public'))); // serve HTML/CSS files in the "public" folder.Only handle GET request. This is just static file, no logic db behind it. Express will serve the file directly to the client without any additional processing.
+
+app.use(registerRoute); //activate APIs routes-run js logic - refer to ** for explaination
+app.use(loginRoute);
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+}); //starts server and listen on chosen port // check constant PORT
+</code></pre>
+
+<p><span style="background-color: #ffeb3b;">Explaination APIs routes logic: registerRoute ( a constant) that linked to the /routes/register folder. register.js is also a mini express app that configure APIs of it own logic. When POST/register arrives your servers, express will check app.use(...) and it reaches app.use(registerRoute) because internally has a route matching POST /register. It run bcrypt/db logic and send back a response. </span></p>
+
+
+
+<p><strong>Node-app/Routes/register.js</strong>- a mini express app</p> 
+
+
+								<p>routes/register.js hashes the password with bcrypt before it ever touches the database, and relies
+									on a unique constraint at the database level to reject duplicate usernames cleanly:</p>
+
+<pre><code class="">router.post('/register', async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'username and password are required' });
+  }
+
+  try {
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+    const result = await pool.query(
+      'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id, username, created_at',
+      [username, passwordHash]
+    );
+
+    res.status(201).json({ user: result.rows[0] });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'username already taken' });
+    }
+    console.error(err);
+    res.status(500).json({ error: 'internal server error' });
+  }
+});
+</code></pre>
+
+								<p>routes/login.js never looks up a password — it re-hashes the submitted attempt and compares it
+									against the stored hash, and returns the same generic error whether the username doesn't exist or
+									the password is wrong, so a failed login never reveals which usernames are registered:</p>
+
+<pre><code class="">const result = await pool.query(
+  'SELECT id, username, password_hash FROM users WHERE username = $1',
+  [username]
+);
+
+if (result.rows.length === 0) {
+  return res.status(401).json({ error: 'invalid username or password' });
+}
+
+const match = await bcrypt.compare(password, result.rows[0].password_hash);
+
+if (!match) {
+  return res.status(401).json({ error: 'invalid username or password' });
+}
+</code></pre>
+
+</p>The login form and the backend route live in two separate files, running in two separate places (the browser vs. the server) — 
+they never call each other directly in code. The only way they communicate is by sending JSON text back and forth over the network.
+ Below, highlighted lines are the exact two moments a JavaScript object actually gets converted to or from JSON text.</p>
+
+ <p><strong> 1./login.html</strong> - When the user submits the log in form the object is collected as "plain JavaScript object" 
+ </p>
+ <pre><code>const username = document.getElementById('username').value;
+const password = document.getElementById('password').value;
+// { username, password } here is a plain JS object — NOT yet JSON </code></pre>
+
+
+<p>Then with JSON.stringify() it gets converted to JSON text. Example result: '{"username":"alice","password":"Phan122"}'. The reason input has to be converted to JSON is because network can only transmit string data.</p>
+<p>Request go over network through the HTTP protocol. Then reach index.js at Backend first</p>
+
+<p><strong>2. Index.js </strong>- before request reaches any routes - middleware converts JSON to JS object because JS objects because the server have no buldt-in understand of the data structure</p>
+
+<pre><code>app.use(express.json()); //middleware -things run on incoming request</code></pre>
+
+<p><strong>3. routes/login.js</strong></p> - Data now is in normal JS object and stored in req.body. 
+<pre><code>router.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  // req.body is a plain JS object here — e.g. { username: "alice", password: "hunter2" }
+  // No .stringify() or .parse() needed; express.json() already did that work.
+  ...
+});</code></pre>
+
+
+<p><strong>4. Postgres Database</strong></p>
+<p> Postgres has it own way to handle the data. pg library in postgres use placeholders such as $1, $2, etc. to store the values. It can be compared to JS object with username: "", password:"". This prevent data injection</p>
+
+<p><strong>5. Route/login.js Response</strong></stromh></p> -- sending response back to the client. Use res.json() to convert JS object to JSON text. Example: res.status(401).json({ error: 'invalid username or password' });  The object { error: 'invalid username or password' } is a plain JS object, but res.json() converts it to JSON text before sending it over network</p>
+
+<pre><code>// On success:
+res.status(200).json({ message: 'login successful', user: { id: user.id, username: user.username } });
+// ^ res.json() converts this JS object into JSON text automatically before sending it.
+
+// On failure:
+res.status(401).json({ error: 'invalid username or password' });</code></pre>
+
+<p><strong>6. public/login.html</strong></p>
+<p>back on FE with JSON format /p>
+
+<pre><code>const data = await res.json();
+// ^ THIS LINE parses the JSON text response back into a plain JS object.
+//   data = { message: "login successful", user: { id: 1, username: "alice" } }
+//   or:   data = { error: "invalid username or password" }
+
+if (res.ok) {
+  message.textContent = `Welcome back, ${data.user.username}!`;
+} else {
+  message.textContent = data.error || 'Login failed';
+}</code></pre>
+
+
+
+
+								<p class="section">🖥️ Method 1 — Manual deployment</p>
+								<p>The first working version of this pipeline was deployed by hand, one command at a time, to prove
+									each layer worked before automating any of it. After Terraform provisioned the instance and the
+									<code>postgres</code> role was confirmed working, the application side was set up directly on the
+									server:</p>
+
+<pre><code>ssh -i ~/.ssh/ansible-key ubuntu@&lt;ec2-public-ip&gt;
+
+git clone https://github.com/myuphan/Node-AWS.git ~/node-app
+cd ~/node-app
+npm install
+
+nano .env          # filled in manually with the real vault values
+sudo nano /etc/systemd/system/node-app.service   # same content as app.service.j2, by hand
+
+sudo systemctl daemon-reload
+sudo systemctl enable node-app
+sudo systemctl start node-app
+</code></pre>
+
+								<p>Once the whole <code>app</code> role's logic was proven this way — file system, database connection,
+									systemd, and public reachability all confirmed working by hand — the same steps were folded back
+									into the Ansible role, so <code>ansible-playbook node_service.yml --tags app</code> now reproduces
+									this exact setup automatically on any fresh instance:</p>
+
+<pre><code>ansible-playbook node_service.yml -i inventory/aws_ec2.yml --tags app --ask-vault-pass</code></pre>
+
+								<p>This is Task #1 from the original project brief — a working manual deployment, reachable on port
+									80 by public IP, driven entirely by a single Ansible command.</p>
+
+								<p class="section">🚀 Method 2 — Automated deployment with GitHub Actions</p>
+								<p>The second method removes manual SSH from the loop entirely. On every push to <code>master</code>,
+									a workflow authenticates to AWS with a dedicated, read-only IAM user, looks up the EC2 instance's
+									current public IP by its tag, then SSHes in and redeploys.</p>
+								<p>.github/workflows/deploy.yml</p>
+
+<pre><code class="">name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Get current EC2 public IP
+        id: get_ip
+        run: |
+          IP=$(aws ec2 describe-instances \
+            --filters "Name=tag:Project,Values=mynode.js" "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].PublicIpAddress" \
+            --output text)
+          echo "Found IP: $IP"
+          echo "ip=$IP" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.get_ip.outputs.ip }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/node-app
+            git pull origin master
+            npm install --production
+            sudo systemctl restart node-app
+</code></pre>
+
+								<p>Looking the IP up live, instead of storing it as a fixed secret, was a deliberate choice: stopping
+									and restarting the EC2 instance normally assigns a new public IP, which would silently break a
+									hardcoded deployment target. Querying AWS directly on every run means the workflow keeps working
+									through restarts with no Elastic IP and no manual secret updates — the same problem the Ansible
+									dynamic inventory already solves, solved again on the GitHub Actions side.</p>
+
+								<p>Three repository secrets make this work: <code>AWS_ACCESS_KEY_ID</code> and
+									<code>AWS_SECRET_ACCESS_KEY</code> for a read-only IAM user scoped to
+									<code>AmazonEC2ReadOnlyAccess</code> — enough to look up the instance, nothing more — and
+									<code>EC2_SSH_KEY</code>, the same private key used for manual SSH access, so the workflow can
+									authenticate to the server exactly as a human operator would.</p>
+
+							<span class="section">Testing</span>
+							<p>Both methods were verified end to end, including the failure case that matters most for a project
+								like this: stopping the EC2 instance (which releases its public IP), starting it again, and
+								confirming the systemd service came back online automatically with zero manual intervention. Pushing
+								a small code change afterward triggered GitHub Actions to look up the new IP, SSH in, and deploy —
+								without updating a single secret by hand.</p>
+							<pre><code>curl http://&lt;ec2-public-ip&gt;</code></pre>
+
+						<span class="section">Possible Upgrade</span>
+							<ul>
+								<li>Add HTTPS via Nginx as a reverse proxy + Let's Encrypt/Certbot</li>
+								<li>Add user profiles and payment functionality</li>
+								<li>Add Load Balancing</li>
+								
+							</ul>
+
+					</div>
+
+					<!-- Copyright -->
+						<div id="copyright">
+						
+					</div>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-sql.min.js"></script>
+
+	</body>
+</html>
